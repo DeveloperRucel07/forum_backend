@@ -5,8 +5,14 @@ class IsOwnerOrAdmin(permissions.BasePermission):
     def has_object_permission(self, request, view, obj):
         if request.method in permissions.SAFE_METHODS:
             return True
-
-        return obj.user == request.user or request.user.is_staff
+        
+        if hasattr(obj, "user"):
+            owner = obj.user
+        elif hasattr(obj, "author"): 
+            owner = obj.author
+        else:
+            return False
+        return owner == request.user or request.user.is_staff
     
 class CustomQuestionPermission(permissions.BasePermission):
     """
