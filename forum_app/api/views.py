@@ -4,7 +4,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 from forum_app.models import Like, Question, Answer
 from .serializers import QuestionSerializer, AnswerSerializer, LikeSerializer
 from .permissions import IsOwnerOrAdmin, CustomQuestionPermission
-from .throttling import  QuestionThrottle
+from .throttling import  QuestionThrottle, AnswerThrottle
 from .limit_pagination import  LikesPagination, LikesLimitOffset
 
 class QuestionViewSet(viewsets.ModelViewSet):
@@ -21,6 +21,7 @@ class QuestionViewSet(viewsets.ModelViewSet):
 class AnswerListCreateView(generics.ListCreateAPIView):
     queryset = Answer.objects.all()
     serializer_class = AnswerSerializer
+    throttle_classes = [AnswerThrottle]
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
 
     def perform_create(self, serializer):
@@ -29,6 +30,7 @@ class AnswerListCreateView(generics.ListCreateAPIView):
 class AnswerDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Answer.objects.all()
     serializer_class = AnswerSerializer
+    throttle_classes = [AnswerThrottle]
     permission_classes = [IsOwnerOrAdmin]
 
 

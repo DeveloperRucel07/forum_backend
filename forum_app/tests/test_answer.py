@@ -10,7 +10,6 @@ from forum_app.models import Answer, Question
 class AnswerTest(APITestCase):
     
     def setUp(self):
-        self.user_staff = User.objects.get_or_create(username='alice', password='asdasd')
         self.user, _ = User.objects.get_or_create(username='bob', password='asdasd')
         self.question = Question.objects.create(title ='Test Question', content = 'this is a test content', author = self.user, category = 'frontend')
         self.answer = Answer.objects.create(content='You can use React.memo to optimize your component.', author=self.user, question=self.question)
@@ -26,7 +25,6 @@ class AnswerTest(APITestCase):
         
     def test_list_post_answer(self):
         url = reverse('answer-list-create')
-        print(self.question, self.user)
         data = {
                 'content':'Content1',
                 'author':self.user.id,

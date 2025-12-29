@@ -38,3 +38,16 @@ class QuestionThrottle(UserRateThrottle):
         
         return super().allow_request(request, view)
     
+class AnswerThrottle(UserRateThrottle):
+    scope = 'answer'
+    
+    def allow_request(self, request, view):
+        
+        if request.method == "GET":
+            return True
+        create_new_scope(self, request, 'answer')
+        
+        return super().allow_request(request, view)
+    
+
+    

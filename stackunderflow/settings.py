@@ -141,7 +141,7 @@ REST_FRAMEWORK = {
     'DEFAULT_THROTTLE_RATES': {
         'anon': '10/day',
         'user': '100/day',
-        'question': '5/day',
+        'question': '10/day',
         'question-post': '10/day',
         'question-post': '2/day',
         'question-put': '2/day',
@@ -150,5 +150,13 @@ REST_FRAMEWORK = {
         'question-get': '10/day',
         'question-options': '10/day',
         
+        'answer': '10/day',
+        'answer-post': '10/day',
+        'answer-post': '5/day',
+        'answer-put': '5/day',
+        'answer-patch': '5/day',
+        'answer-delete': '5/day',
+        'answer-get': '10/day',
+        'answer-options': '10/day',   
     }
 }
