@@ -1,7 +1,9 @@
 from rest_framework import serializers
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.contrib.auth import authenticate
-from django.contrib.auth.models import User
+from django.contrib.auth  import get_user_model
 
+User = get_user_model()
 
 class LoginWithEmailSerializer(serializers.ModelSerializer):
     """
@@ -10,12 +12,12 @@ class LoginWithEmailSerializer(serializers.ModelSerializer):
     validate if the information are corresponding to the pretent user or not.
     
     """
-    email = serializers.CharField()
+    username = serializers.CharField()
     password = serializers.CharField(write_only= True)
     
     class Meta:
         model = User
-        fields = ['email', 'password']
+        fields = ['username', 'password']
         extra_kwargs = {
             'password': {
                 'write_only': True
@@ -24,21 +26,21 @@ class LoginWithEmailSerializer(serializers.ModelSerializer):
     
     def validate(self, data):
         """
-        Validate the login data by checking email and password.
+        Validate the login data by checking username and password.
 
         Args:
-            data (dict): The data to validate containing email and password.
+            data (dict): The data to validate containing username and password.
 
         Returns:
             dict: The validated data with user added.
 
         Raises:
-            ValidationError: If email or password is invalid.
+            ValidationError: If username or password is invalid.
         """
-        email = data.get('email')
+        user = data.get('username')
         password = data.get('password')  
         try:
-            user = User.objects.get(email=email)
+            user = User.objects.get(username=user)
         except User.DoesNotExist:
             raise serializers.ValidationError("Invalid email or password")
 
@@ -94,4 +96,39 @@ class RegistrationSerializer(serializers.ModelSerializer):
         account.set_password(pw)
         account.save()
         return account
+    
+    
+class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
+    """
+    Custom Token Obtain Pair Serializer.
+    Used to customize the token claims if needed.
+    Currently, it does not add any additional claims.
+    """
+    email = serializers.EmailField()
+    password = serializers.CharField(write_only=True)
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        if 'username' in self.fields:
+            self.fields.pop('username')
+        
+    
+    def validate(self, attrs):
+        email = attrs.get('email')
+        password = attrs.get('password')
+        
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            raise serializers.ValidationError("Invalid email or password")
+        if not user.check_password(password):
+            raise serializers.ValidationError("Invalid email or password")
+        
+        data = super().validate({'username': user.username, 'password': password})
+        return data
+        
+        
+    
+    
         

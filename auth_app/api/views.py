@@ -3,8 +3,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.permissions import AllowAny, IsAuthenticated
-from rest_framework.authtoken.models import Token
-from .serializers import LoginWithEmailSerializer, RegistrationSerializer
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+from .serializers import LoginWithEmailSerializer, RegistrationSerializer, CustomTokenObtainPairSerializer
 
 class RegistrationView(APIView):
     permission_classes = [AllowAny]
@@ -23,9 +23,7 @@ class RegistrationView(APIView):
 
         if serializer.is_valid():
             saved_account = serializer.save()
-            token, created = Token.objects.get_or_create(user=saved_account)
             data = {
-                'token': token.key,
                 'fullname': saved_account.username,
                 'email': saved_account.email,
                 'user_id': saved_account.id,
@@ -33,7 +31,79 @@ class RegistrationView(APIView):
             return Response(data, status=status.HTTP_201_CREATED)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    
 
+class CookieTokenObtainPairView(TokenObtainPairView):
+    serializer_class = CustomTokenObtainPairSerializer
+    def post(self, request, *args, **kwargs):
+        """Override the post method to set the JWT token in an HttpOnly cookie.
+        Args:
+            request (request): user request
+        Returns:
+            response: response with the JWT token set in an HttpOnly cookie.
+        """
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        refresh = serializer.validated_data['refresh']
+        access = serializer.validated_data['access']
+        
+        response = Response({"message":"Login successfully"}, status=status.HTTP_200_OK)
+        response.set_cookie(
+            key='access_token',
+            value=str(access),
+            httponly=True,
+            secure=False,
+            samesite='Lax',
+        )
+        response.set_cookie(
+            key='refresh_token',
+            value=str(refresh),
+            httponly=True,
+            secure=False,
+            samesite='Lax',
+        )
+        response.data = {'message': 'Login successful'}
+        return response
+
+
+class CookieTokenRefreshView(TokenRefreshView):
+    permission_classes = [AllowAny]
+    def post(self, request, *args, **kwargs):
+        """Override the post method to refresh the JWT token from HttpOnly cookie.
+
+        Args:
+            request (request): user request
+        Returns:
+            response: response with the refreshed JWT token set in an HttpOnly cookie.
+        """
+        refresh_token = request.COOKIES.get('refresh_token')
+        if not refresh_token:
+            return Response({'detail': 'Refresh token not provided'}, status=status.HTTP_400_BAD_REQUEST)
+
+        serializer = self.get_serializer(data={'refresh': refresh_token})
+        try:
+            serializer.is_valid(raise_exception=True)
+        except:
+            return Response({'detail': 'Invalid refresh token'}, status=status.HTTP_400_BAD_REQUEST)
+        access = serializer.validated_data.get('access')
+        response = Response({'message': 'Token refreshed successfully'}, status=status.HTTP_200_OK)
+        response.set_cookie(
+            key='access_token',
+            value=access,
+            httponly=True,
+            secure=False,
+            samesite='Lax',
+        )
+        return response
+            
+            
+            
+            
+            
+            
+            
+            
 class LoginView(ObtainAuthToken):
     permission_classes = [AllowAny]
     serializer_class = LoginWithEmailSerializer
@@ -52,9 +122,7 @@ class LoginView(ObtainAuthToken):
         data = {}
         if serializer.is_valid():
             user = serializer.validated_data['user']
-            token, created = Token.objects.get_or_create(user = user)
             data = {
-                'token': token.key,
                 'fullname': user.username,
                 'email': user.email,
                 'user_id':user.id
@@ -63,12 +131,3 @@ class LoginView(ObtainAuthToken):
         else:
             return Response({'detail':'please check your username and password'}, status=status.HTTP_400_BAD_REQUEST)
        
-class LogoutView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request):
-        """
-        Logout user by delete the token in the Token database
-        """
-        request.user.auth_token.delete() 
-        return Response({"detail": "Logout Successfully. Your Token was deleted"}, status=status.HTTP_200_OK)
